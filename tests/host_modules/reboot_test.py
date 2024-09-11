@@ -24,11 +24,13 @@ TEST_INACTIVE_RESPONSE_DATA = "{\"active\": false, \"when\": 0, \"reason\": \"\"
 
 REBOOT_METHOD_UNKNOWN_ENUM = 0
 REBOOT_METHOD_COLD_BOOT_ENUM = 1
+REBOOT_METHOD_HALT_BOOT_ENUM = 3
 REBOOT_METHOD_WARM_BOOT_ENUM = 4
 
 TEST_TIMESTAMP = 1618942253.831912040
 
 VALID_REBOOT_REQUEST_COLD = "{\"method\": 1, \"message\": \"test reboot request reason\"}"
+VALID_REBOOT_REQUEST_HALT = "{\"method\": 3, \"message\": \"test reboot request reason\"}"
 VALID_REBOOT_REQUEST_WARM = "{\"method\": \"WARM\", \"message\": \"test reboot request reason\"}"
 INVALID_REBOOT_REQUEST = "\"method\": 1, \"message\": \"test reboot request reason\""
 
@@ -59,6 +61,18 @@ class TestReboot(object):
     def test_validate_reboot_request_success_cold_boot_string_method(self):
         reboot_request = {"method": "COLD", "reason": "test reboot request reason"}
         result = self.reboot_module.validate_reboot_request(reboot_request)
+        assert result[0] == 0
+        assert result[1] == ""
+
+    def test_validate_reboot_request_success_halt_boot_enum_method(self):
+        reboot_request = {"method": REBOOT_METHOD_HALT_BOOT_ENUM, "reason": "test reboot request reason"}
+        result = self.gnoi_reboot_module.validate_reboot_request(reboot_request)
+        assert result[0] == 0
+        assert result[1] == ""
+
+    def test_validate_reboot_request_success_halt_boot_string_method(self):
+        reboot_request = {"method": "HALT", "reason": "test reboot request reason"}
+        result = self.gnoi_reboot_module.validate_reboot_request(reboot_request)
         assert result[0] == 0
         assert result[1] == ""
 
@@ -124,6 +138,20 @@ class TestReboot(object):
             assert caplog.records[0].message == msg
             mock_populate_reboot_status_flag.assert_called_once_with()
 
+    def test_execute_reboot_fail_issue_reboot_command_halt_boot(self, caplog):
+        with (
+            mock.patch("gnoi_reboot._run_command") as mock_run_command,
+            mock.patch("gnoi_reboot.GnoiReboot.populate_reboot_status_flag") as mock_populate_reboot_status_flag,
+            caplog.at_level(logging.ERROR),
+        ):
+            mock_run_command.return_value = (1, ["stdout: execute halt reboot"], ["stderror: execute halt reboot"])
+            self.gnoi_reboot_module.execute_reboot(REBOOT_METHOD_HALT_BOOT_ENUM)
+            msg = ("gnoi_reboot: Reboot failed execution with "
+                    "stdout: ['stdout: execute halt reboot'], stderr: "
+                    "['stderror: execute halt reboot']")
+            assert caplog.records[0].message == msg
+            mock_populate_reboot_status_flag.assert_called_once_with()
+
     def test_execute_reboot_fail_issue_reboot_command_warm(self, caplog):
         with (
             mock.patch("reboot._run_command") as mock_run_command,
@@ -150,6 +178,21 @@ class TestReboot(object):
             mock_thread.assert_called_once_with(
                 target=self.reboot_module.execute_reboot,
                 args=(REBOOT_METHOD_COLD_BOOT_ENUM,),
+            )
+            mock_thread.return_value.start.assert_called_once_with()
+
+    def test_issue_reboot_success_halt_boot(self):
+        with (
+            mock.patch("threading.Thread") as mock_thread,
+            mock.patch("gnoi_reboot.GnoiReboot.validate_reboot_request", return_value=(0, "")),
+        ):
+            self.gnoi_reboot_module.populate_reboot_status_flag()
+            result = self.gnoi_reboot_module.issue_reboot([VALID_REBOOT_REQUEST_HALT])
+            assert result[0] == 0
+            assert result[1] == "Successfully issued reboot"
+            mock_thread.assert_called_once_with(
+                target=self.gnoi_reboot_module.execute_reboot,
+                args=(REBOOT_METHOD_HALT_BOOT_ENUM,),
             )
             mock_thread.return_value.start.assert_called_once_with()
 
@@ -217,7 +260,7 @@ class TestReboot(object):
         assert response_data["active"] == False
         assert response_data["when"] == 0
         assert response_data["reason"] == ""
-        
+
 #        assert result[1] == TEST_INACTIVE_RESPONSE_DATA
 
     def test_register(self):

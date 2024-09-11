@@ -11,12 +11,14 @@ MOD_NAME = 'reboot'
 # Reboot method in reboot request
 # Both enum and string representations are supported
 REBOOT_METHOD_COLD_BOOT_VALUES = {1, "COLD"}
+REBOOT_METHOD_HALT_BOOT_VALUES = {3, "HALT"}
 REBOOT_METHOD_WARM_BOOT_VALUES = {4, "WARM"}
 
 # Timeout for SONiC Host Service to be killed during reboot
 REBOOT_TIMEOUT = 260
 
 EXECUTE_COLD_REBOOT_COMMAND = "sudo reboot"
+EXECUTE_HALT_REBOOT_COMMAND = "sudo reboot -p"
 EXECUTE_WARM_REBOOT_COMMAND = "sudo warm-reboot"
 
 logger = logging.getLogger(__name__)
@@ -52,7 +54,7 @@ class Reboot(host_service.HostModule):
 
         # Check whether reboot method is valid.
         reboot_method = reboot_request["method"]
-        valid_reboot_method = REBOOT_METHOD_COLD_BOOT_VALUES | REBOOT_METHOD_WARM_BOOT_VALUES
+        valid_reboot_method = REBOOT_METHOD_COLD_BOOT_VALUES | REBOOT_METHOD_HALT_BOOT_VALUES | REBOOT_METHOD_WARM_BOOT_VALUES
         if reboot_method not in valid_reboot_method:
             return 1, "Invalid reboot method: " + str(reboot_method)
 
@@ -67,6 +69,9 @@ class Reboot(host_service.HostModule):
         if reboot_method in REBOOT_METHOD_COLD_BOOT_VALUES:
             command = EXECUTE_COLD_REBOOT_COMMAND
             logger.warning("%s: Issuing cold reboot", MOD_NAME)
+        elif reboot_method in REBOOT_METHOD_HALT_BOOT_VALUES:
+            command = EXECUTE_HALT_REBOOT_COMMAND
+            logger.warning("%s: Issuing halt reboot", MOD_NAME)
         elif reboot_method in REBOOT_METHOD_WARM_BOOT_VALUES:
             command = EXECUTE_WARM_REBOOT_COMMAND
             logger.warning("%s: Issuing WARM reboot", MOD_NAME)
