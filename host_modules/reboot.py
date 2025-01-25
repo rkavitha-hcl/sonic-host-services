@@ -10,6 +10,7 @@ from utils.run_cmd import _run_command
 MOD_NAME = 'reboot'
 # Reboot method in reboot request
 # Both enum and string representations are supported
+# Define an Enum for Reboot Methods which are defined as in https://github.com/openconfig/gnoi/blob/main/system/system.pb.go#L27
 REBOOT_METHOD_COLD_BOOT_VALUES = {1, "COLD"}
 REBOOT_METHOD_HALT_BOOT_VALUES = {3, "HALT"}
 REBOOT_METHOD_WARM_BOOT_VALUES = {4, "WARM"}
