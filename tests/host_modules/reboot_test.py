@@ -66,13 +66,13 @@ class TestReboot(object):
 
     def test_validate_reboot_request_success_halt_boot_enum_method(self):
         reboot_request = {"method": REBOOT_METHOD_HALT_BOOT_ENUM, "reason": "test reboot request reason"}
-        result = self.gnoi_reboot_module.validate_reboot_request(reboot_request)
+        result = self.reboot_module.validate_reboot_request(reboot_request)
         assert result[0] == 0
         assert result[1] == ""
 
     def test_validate_reboot_request_success_halt_boot_string_method(self):
         reboot_request = {"method": "HALT", "reason": "test reboot request reason"}
-        result = self.gnoi_reboot_module.validate_reboot_request(reboot_request)
+        result = self.reboot_module.validate_reboot_request(reboot_request)
         assert result[0] == 0
         assert result[1] == ""
 
@@ -138,15 +138,15 @@ class TestReboot(object):
             assert caplog.records[0].message == msg
             mock_populate_reboot_status_flag.assert_called_once_with()
 
-    def test_execute_reboot_fail_issue_reboot_command_halt_boot(self, caplog):
+    def test_execute_reboot_fail_issue_reboot_command_halt(self, caplog):
         with (
-            mock.patch("gnoi_reboot._run_command") as mock_run_command,
-            mock.patch("gnoi_reboot.GnoiReboot.populate_reboot_status_flag") as mock_populate_reboot_status_flag,
+            mock.patch("reboot._run_command") as mock_run_command,
+            mock.patch("reboot.Reboot.populate_reboot_status_flag") as mock_populate_reboot_status_flag,
             caplog.at_level(logging.ERROR),
         ):
             mock_run_command.return_value = (1, ["stdout: execute halt reboot"], ["stderror: execute halt reboot"])
-            self.gnoi_reboot_module.execute_reboot(REBOOT_METHOD_HALT_BOOT_ENUM)
-            msg = ("gnoi_reboot: Reboot failed execution with "
+            self.reboot_module.execute_reboot(REBOOT_METHOD_HALT_BOOT_ENUM)
+            msg = ("reboot: Reboot failed execution with "
                     "stdout: ['stdout: execute halt reboot'], stderr: "
                     "['stderror: execute halt reboot']")
             assert caplog.records[0].message == msg
@@ -181,17 +181,17 @@ class TestReboot(object):
             )
             mock_thread.return_value.start.assert_called_once_with()
 
-    def test_issue_reboot_success_halt_boot(self):
+    def test_issue_reboot_success_halt(self):
         with (
             mock.patch("threading.Thread") as mock_thread,
-            mock.patch("gnoi_reboot.GnoiReboot.validate_reboot_request", return_value=(0, "")),
+            mock.patch("reboot.Reboot.validate_reboot_request", return_value=(0, "")),
         ):
-            self.gnoi_reboot_module.populate_reboot_status_flag()
-            result = self.gnoi_reboot_module.issue_reboot([VALID_REBOOT_REQUEST_HALT])
+            self.reboot_module.populate_reboot_status_flag()
+            result = self.reboot_module.issue_reboot([VALID_REBOOT_REQUEST_HALT])
             assert result[0] == 0
             assert result[1] == "Successfully issued reboot"
             mock_thread.assert_called_once_with(
-                target=self.gnoi_reboot_module.execute_reboot,
+                target=self.reboot_module.execute_reboot,
                 args=(REBOOT_METHOD_HALT_BOOT_ENUM,),
             )
             mock_thread.return_value.start.assert_called_once_with()
